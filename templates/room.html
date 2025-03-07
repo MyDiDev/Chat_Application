@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
+      crossorigin="anonymous"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inconsolata:wght@200..900&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        font-family: "Inconsolata", sans-serif;
+        background-color: #4a5568;
+        color: white;
+      }
+
+      :root {
+        --message-bg-color: rgb(0, 119, 255);
+        --usermessage-bg-color: rgb(99, 159, 212);
+        --message-pd: 10px;
+        --message-width: 75%;
+      }
+
+      #message {
+        align-self: flex-end;
+        background-color: var(--message-bg-color);
+        padding: var(--message-pd);
+        color: white;
+        width: var(--message-width);
+        border-radius: 5px;
+      }
+
+      #user-msg {
+        align-self: flex-start;
+        background-color: #2d3748;
+        padding: var(--message-pd);
+        color: white;
+        width: var(--message-width);
+        border-radius: 5px;
+        width: auto;
+        word-wrap: break-word;
+        font-weight: normal;
+      }
+
+      #messageBoxContainer {
+        position: fixed;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        bottom: 0;
+        left: 0;
+        padding: 10px;
+      }
+    </style>
+    <title>Chat - Application</title>
+  </head>
+  <body>
+    <header
+      class="p-2 shadow"
+      style="border-bottom: #2d3748 solid 5px; background-color: #2d3748"
+    >
+      <nav class="navbar" style="border: none">
+        <button
+          class="btn btn-dark"
+          type="button"
+          data-bs-toggle="offcanvas"
+          data-bs-target="#staticBackdrop"
+          aria-controls="staticBackdrop"
+        >
+          Rooms
+        </button>
+
+        <div
+          class="offcanvas offcanvas-start"
+          data-bs-backdrop="static"
+          tabindex="-1"
+          id="staticBackdrop"
+          aria-labelledby="staticBackdropLabel"
+          style="background-color: #2d3748; color: white"
+        >
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="staticBackdropLabel">
+              {{ room_name }}
+            </h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="offcanvas"
+              aria-label="Close"
+            ></button>
+          </div>
+          <div class="offcanvas-body">
+            <div></div>
+          </div>
+          <div>
+            <a
+              class="w-100 p-3 btn btn-dark"
+              onclick="leaveRoom()"
+              href="{{ url_for('index') }}"
+              style="border-radius: 0"
+            >
+              Leave Room
+            </a>
+          </div>
+        </div>
+        <h2 class="navbar-brand text-white">{{ room_name }}</h2>
+      </nav>
+    </header>
+    <br />
+    <input type="hidden" value="{{ room_id }}" id="room_id" />
+    <input type="hidden" value="{{ room_name }}" id="room_name" />
+    <input type="hidden" value="{{ username }}" id="username" />
+    <div
+      class="container-fluid w-75"
+      style="
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+      "
+    >
+      <div
+        id="messages"
+        class="container-fluid m-2 pt-2 pb-5"
+        style="display: flex; flex-direction: column; gap: 20px"
+      >
+        {% for msg in messages %}
+        <label>{{ msg[4] }}:</label>
+        <div id="user-msg">{{ msg[2] }}</div>
+        {% endfor %}
+        <br />
+        <br />
+      </div>
+
+      <div id="messageBoxContainer" class="w-100">
+        <div class="w-75" style="display: flex" align="center">
+          <input
+            type="text"
+            class="form-control m-1 shadow-sm"
+            id="msgInput"
+            autocomplete="off"
+            style="background-color: #2d3748; border: none"
+          />
+          <button class="btn btn-dark m-1 p-2 shadow-sm w-50" id="sendBtn">
+            Send
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
+    <script>
+      const socketio = io();
+
+      const roomId = document.getElementById("room_id").value;
+
+      window.onload() = function() {
+        socketio.emit("join", roomId)
+      }
+
+      document.getElementById("sendBtn").onclick = () => {
+        sendMsg();
+      };
+
+      document.addEventListener("keypress", (ev) => {
+        if (ev.key === "Enter") {
+          sendMsg();
+        }
+      });
+
+      function sendMsg() {
+        const inputMsg = document.getElementById("msgInput");
+        const roomName = document.getElementById("room_name").value;
+        const username = document.getElementById("username").value;
+
+        if (
+          !inputMsg ||
+          inputMsg.value == "" ||
+          !roomId ||
+          !roomName ||
+          !username
+        ) {
+          alert("Error: Could not Get enough data");
+          return;
+        }
+
+        socketio.emit("room_msg", {
+          room_id: roomId,
+          room_name: roomName,
+          username: username,
+          message: inputMsg.value.trim(),
+        });
+
+        window.location.reload();
+        inputMsg.value = "";
+      }
+
+      socketio.on("msg", (data) => {
+        window.location.reload();
+        const messageContainer = document.getElementById("messages");
+        const div = document.createElement("div");
+        const label = document.createElement("label");
+
+        div.id = "user-msg";
+        label.textContent = `${data.user}:`;
+        div.textContent = `${data.message.trim()}`;
+
+        messageContainer.appendChild(label);
+        messageContainer.appendChild(div);
+        messageContainer.scrollTop = messageContainer.scrollHeight;
+      });
+
+      function leaveRoom() {
+        socketio.emit("leave", roomId);
+      }
+    </script>
+
+    <script
+      src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+      integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
+      crossorigin="anonymous"
+    ></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"
+      integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r"
+      crossorigin="anonymous"
+    ></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.min.js"
+      integrity="sha384-0pUGZvbkm6XF6gxjEnlmuGrJXVbNuzT9qBBavbLwCsOGabYfZo0T0to5eqruptLy"
+      crossorigin="anonymous"
+    ></script>
+  </body>
+</html>
